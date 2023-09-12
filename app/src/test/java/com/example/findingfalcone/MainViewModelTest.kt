@@ -53,12 +53,12 @@ class MainViewModelTest {
         Mockito.`when`(repository.getPlanets()).thenReturn(mockPlanetsList)
 
         // Act
-        viewModel.myPlanets.observeForever(planetsObserver)
+        viewModel.planetsLiveData.observeForever(planetsObserver)
         viewModel.getPlanets()
 
         // Assert
         Mockito.verify(planetsObserver).onChanged(mockPlanetsList)
-        viewModel.myPlanets.removeObserver(planetsObserver)
+        viewModel.planetsLiveData.removeObserver(planetsObserver)
     }
 
     @Test
@@ -67,12 +67,12 @@ class MainViewModelTest {
         Mockito.`when`(repository.getPlanets()).thenReturn(emptyList())
 
         // Act
-        viewModel.myPlanets.observeForever(planetsObserver)
+        viewModel.planetsLiveData.observeForever(planetsObserver)
         viewModel.getPlanets()
 
         // Assert
         Mockito.verify(planetsObserver).onChanged(emptyList())
-        viewModel.myPlanets.removeObserver(planetsObserver)
+        viewModel.planetsLiveData.removeObserver(planetsObserver)
     }
 
     @Test
@@ -82,12 +82,12 @@ class MainViewModelTest {
         Mockito.`when`(repository.getVehicles()).thenReturn(mockVehiclesList)
 
         // Act
-        viewModel.myVehicles.observeForever(vehiclesObserver)
+        viewModel.vehiclesLiveData.observeForever(vehiclesObserver)
         viewModel.getVehicles()
 
         // Assert
         Mockito.verify(vehiclesObserver).onChanged(mockVehiclesList)
-        viewModel.myVehicles.removeObserver(vehiclesObserver)
+        viewModel.vehiclesLiveData.removeObserver(vehiclesObserver)
     }
 
     @Test
@@ -96,12 +96,12 @@ class MainViewModelTest {
         Mockito.`when`(repository.getVehicles()).thenReturn(emptyList())
 
         // Act
-        viewModel.myVehicles.observeForever(vehiclesObserver)
+        viewModel.vehiclesLiveData.observeForever(vehiclesObserver)
         viewModel.getVehicles()
 
         // Assert
         Mockito.verify(vehiclesObserver).onChanged(emptyList())
-        viewModel.myVehicles.removeObserver(vehiclesObserver)
+        viewModel.vehiclesLiveData.removeObserver(vehiclesObserver)
 
     }
 

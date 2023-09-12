@@ -1,622 +1,406 @@
-    package com.example.findingfalcone
-    
-    import android.content.Context
-    import android.net.ConnectivityManager
-    import android.net.NetworkInfo
-    import android.os.Bundle
-    import android.view.LayoutInflater
-    import android.view.View
-    import android.view.ViewGroup
-    import android.widget.ArrayAdapter
-    import android.widget.AutoCompleteTextView
-    import android.widget.ProgressBar
-    import android.widget.RadioButton
-    import android.widget.RadioGroup
-    import android.widget.TextView
-    import android.widget.Toast
-    import androidx.appcompat.widget.AppCompatButton
-    import androidx.constraintlayout.widget.ConstraintLayout
-    import androidx.core.view.children
-    import androidx.fragment.app.Fragment
-    import androidx.fragment.app.FragmentManager
-    import androidx.lifecycle.Observer
-    import androidx.lifecycle.ViewModelProvider
-    import com.example.findingfalcone.models.Planets
-    import com.example.findingfalcone.models.Vehicles
-    import com.example.findingfalcone.repo.Repository
-    import kotlin.system.exitProcess
-    
-    /** First screen in which user will select its choices. **/
-    class FindFalconFragment : Fragment() {
-        private lateinit var autoCompleteTV: AutoCompleteTextView
-        private lateinit var autoCompleteTV2: AutoCompleteTextView
-        private lateinit var autoCompleteTV3: AutoCompleteTextView
-        private lateinit var autoCompleteTV4: AutoCompleteTextView
-    
-        private lateinit var constraintLayout: ConstraintLayout
-        private lateinit var timeTakenTV: TextView
-        private lateinit var findFalconButton: AppCompatButton
-        private lateinit var progressBarLayout: ProgressBar
-        private lateinit var viewModel: MainViewModel
-        private lateinit var planetsList: List<Planets>
-        private lateinit var planetNamesList: MutableList<String>
-        private var selectedPlanetNames: MutableList<String> = mutableListOf()
-        private var prevSelectedPlanetName: MutableList<String> = mutableListOf("", "", "", "")
-        private var prevSelectedRadioButtonId: MutableList<Int> = mutableListOf(0, 0, 0, 0)
-        private lateinit var vehiclesList: List<Vehicles>
-        private lateinit var vehicleNames: List<String>
-        private lateinit var vehicleDist: List<Int>
-        private lateinit var vehicleSpeed: List<Int>
-        private lateinit var noOfVehicles: MutableList<Int>
-        private var shouldRespondToChange: Boolean = true
-        private var planetHashMap: LinkedHashMap<String, Int> = LinkedHashMap()
-        private var totalTimeTaken :Int = 0
-    
-        private lateinit var radioGroup1: RadioGroup
-        private lateinit var radioGroup2: RadioGroup
-        private lateinit var radioGroup3: RadioGroup
-        private lateinit var radioGroup4: RadioGroup
-        private lateinit var radioButton1: RadioButton
-        private lateinit var radioButton2: RadioButton
-        private lateinit var radioButton3: RadioButton
-        private lateinit var radioButton4: RadioButton
-        private lateinit var radioButton5: RadioButton
-        private lateinit var radioButton6: RadioButton
-        private lateinit var radioButton7: RadioButton
-        private lateinit var radioButton8: RadioButton
-        private lateinit var radioButton9: RadioButton
-        private lateinit var radioButton10: RadioButton
-        private lateinit var radioButton11: RadioButton
-        private lateinit var radioButton12: RadioButton
-        private lateinit var radioButton13: RadioButton
-        private lateinit var radioButton14: RadioButton
-        private lateinit var radioButton15: RadioButton
-        private lateinit var radioButton16: RadioButton
-    
-        override fun onCreateView(
-            inflater: LayoutInflater,
-            container: ViewGroup?,
-            savedInstanceState: Bundle?
-        ): View? {
-            val view = inflater.inflate(R.layout.fragment_find_falcon_screen, container, false)
-    
-            if (!isInternetConnected(requireContext())) {
-                generateToast("Check your internet connection")
-                exitProcess(0)
-            }
-            initializeViews(view)
-    
-            val repo = Repository()
-            val viewModelFactory = MainViewModelFactory(repo)
-            viewModel =
-                ViewModelProvider(requireActivity(), viewModelFactory)[MainViewModel::class.java]
-    
-            addObservers()
-            setClickListeners()
-    
-            return view
+package com.example.findingfalcone
+
+import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.ArrayAdapter
+import android.widget.RadioButton
+import android.widget.Toast
+import androidx.core.view.children
+import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentManager
+import androidx.lifecycle.Observer
+import androidx.lifecycle.ViewModelProvider
+import com.example.findingfalcone.initializers.FindFalconFragmentViewInitializer
+import com.example.findingfalcone.models.Planets
+import com.example.findingfalcone.models.Vehicles
+import com.example.findingfalcone.repo.Repository
+import com.example.findingfalcone.utils.NetworkUtils
+import kotlin.system.exitProcess
+
+/** First screen in which user will select its choices. */
+class FindFalconFragment : Fragment() {
+
+    /** This list will contain all the planets data from API. */
+    private lateinit var planetsList: List<Planets>
+
+    /**
+     * This list will contain currently available planets names to show in
+     * [FindFalconFragmentViewInitializer.planetAutoCompleteTextViews].
+     */
+    private lateinit var planetNamesList: MutableList<String>
+
+    /**
+     * This list will contain currently selected planet names by the user in
+     * [FindFalconFragmentViewInitializer.planetAutoCompleteTextViews].
+     */
+    private var selectedPlanetNames: MutableList<String> = mutableListOf()
+
+    /**
+     * This list is used for manipulating the data and contains the previously selected planet name
+     * by the user in [FindFalconFragmentViewInitializer.planetAutoCompleteTextViews].
+     */
+    private var prevSelectedPlanetNames: MutableList<String> = mutableListOf("", "", "", "")
+
+    /** This list will contain all the vehicles data from API. */
+    private lateinit var vehiclesList: List<Vehicles>
+
+    /** This list will contain all the vehicle names from the vehiclesList. */
+    private lateinit var vehicleNames: List<String>
+
+    /**
+     * This list will contain all the vehicle maximum distances that they can travel from
+     * the [vehiclesList].
+     */
+    private lateinit var vehicleDistances: List<Int>
+
+    /** This list will contain all the vehicle speeds from the [vehiclesList]. */
+    private lateinit var vehicleSpeeds: List<Int>
+
+    /** This list will contain all the total number of vehicles from the [vehiclesList]. */
+    private lateinit var noOfVehicles: MutableList<Int>
+
+    /** ViewModel to fetch the API result. */
+    private lateinit var viewModel: MainViewModel
+
+    /**
+     * The [FindFalconFragmentViewInitializer] instance used to initialize and manage view components
+     * within the [FindFalconFragment].
+     */
+    private lateinit var viewInitializer: FindFalconFragmentViewInitializer
+
+    /**
+     * This list will contain Radio Ids of the currently selected vehicles (i.e. RadioButton(s)) on
+     * all the [FindFalconFragmentViewInitializer.vehicleRadioGroups].
+     */
+    private var selectedVehicleRadioIds: MutableList<Int> = mutableListOf(0, 0, 0, 0)
+
+    /**
+     * This hashmap will store values in [k,V] Pair when K is planet name and V is the distance to
+     * that planet.
+     */
+    private var planetHashMap: LinkedHashMap<String, Int> = LinkedHashMap()
+
+    /**
+     * Boolean variable to be mainly used to not call [updateRadioGroupOnSelection] method when
+     * RadioButton.isChecked property is manually updated.
+     */
+    private var shouldRespondToChange: Boolean = true
+
+    /** Variable to store the current total time taken to go to planet to find Falcon. */
+    private var totalTimeTaken: Int = 0
+
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View? {
+        val view = inflater.inflate(R.layout.fragment_find_falcon_screen, container, false)
+
+        if (!NetworkUtils.isInternetConnected(requireContext())) {
+            generateToast("Check your internet connection")
+            exitProcess(0)
         }
-    
-        private fun setClickListeners() {
-            findFalconButton.setOnClickListener {
-                generateToast("Fetching Result")
-    
-                // Return if any planet choice is not selected.
-                when {
-                    prevSelectedPlanetName[0].isEmpty() -> {
-                        generateToast("Select first planet")
-                        return@setOnClickListener
-                    }
-    
-                    prevSelectedPlanetName[1].isEmpty() -> {
-                        generateToast("Select second planet")
-                        return@setOnClickListener
-                    }
-    
-                    prevSelectedPlanetName[2].isEmpty() -> {
-                        generateToast("Select third planet")
-                        return@setOnClickListener
-                    }
-    
-                    prevSelectedPlanetName[3].isEmpty() -> {
-                        generateToast("Select fourth planet")
-                        return@setOnClickListener
-                    }
-                }
-    
-                // Return if vehicle is not selected for any selected planets.
-                when {
-                    prevSelectedRadioButtonId[0] == 0 -> {
-                        generateToast("Select vehicle to first planet")
-                        return@setOnClickListener
-                    }
-    
-                    prevSelectedRadioButtonId[1] == 0 -> {
-                        generateToast("Select vehicle to second planet")
-                        return@setOnClickListener
-                    }
-    
-                    prevSelectedRadioButtonId[2] == 0 -> {
-                        generateToast("Select vehicle to third planet")
-                        return@setOnClickListener
-                    }
-    
-                    prevSelectedRadioButtonId[3] == 0 -> {
-                        generateToast("Select vehicle to fourth planet")
-                        return@setOnClickListener
-                    }
-                }
-    
-                val idx1 = radioGroup1.indexOfChild(radioGroup1.findViewById(prevSelectedRadioButtonId[0]))
-                val idx2 = radioGroup2.indexOfChild(radioGroup2.findViewById(prevSelectedRadioButtonId[1]))
-                val idx3 = radioGroup3.indexOfChild(radioGroup3.findViewById(prevSelectedRadioButtonId[2]))
-                val idx4 = radioGroup4.indexOfChild(radioGroup4.findViewById(prevSelectedRadioButtonId[3]))
-                val selectedVehicles: List<String> = listOf(vehicleNames[idx1], vehicleNames[idx2], vehicleNames[idx3], vehicleNames[idx4])
-    
+        viewInitializer = FindFalconFragmentViewInitializer(view)
+        setupViewModel()
+        setClickListeners()
+
+        return view
+    }
+
+    /** This method will set up the [viewModel] and adds an observer for planet and vehicle data. */
+    private fun setupViewModel() {
+        val repo = Repository()
+        val viewModelFactory = MainViewModelFactory(repo)
+        viewModel =
+            ViewModelProvider(requireActivity(), viewModelFactory)[MainViewModel::class.java]
+
+        viewModel.planetsLiveData.observe(viewLifecycleOwner, Observer { planets ->
+            if (planets != null) {
+                planetsList = planets
+                setDestination(planetsList)
+                generateToast("Success Response in fetching Planets")
+            } else {
+                viewInitializer.progressBar.visibility = View.GONE
+                generateToast("Error in fetching Planets")
+            }
+        })
+
+        viewModel.vehiclesLiveData.observe(viewLifecycleOwner, Observer { vehicles ->
+            if (vehicles != null) {
+                vehiclesList = vehicles
+                setVehicles(vehiclesList)
+                showLayoutAndHideProgressBar()
+                generateToast("Success Response in fetching Vehicles")
+            } else {
+                viewInitializer.progressBar.visibility = View.GONE
+                generateToast("Error in fetching Vehicles")
+            }
+        })
+    }
+
+    /** This method will set click listeners. */
+    private fun setClickListeners() {
+        viewInitializer.findFalconButton.setOnClickListener {
+            if (validateSelections()) {
+                val selectedVehicles = getSelectedVehicles()
                 showResultScreen(selectedVehicles)
             }
-    
-            autoCompleteTV.setOnItemClickListener { parent, view, position, id ->
-                // Handle item click here
-                if (prevSelectedRadioButtonId[0] != 0) {
-                    val oldRadioButton: RadioButton =
-                        radioGroup1.findViewById(prevSelectedRadioButtonId[0])
-                    val idx = radioGroup1.indexOfChild(oldRadioButton)
-                    noOfVehicles[idx]++
-                    unSelectRadioGroup1()
-                    prevSelectedRadioButtonId[0] = 0
-                    val planetDistance: Int? = planetHashMap[prevSelectedPlanetName[0]]
-                    planetDistance?.let {
-                        val i = radioGroup1.indexOfChild(oldRadioButton)
-                        val time = it/vehicleSpeed[i]
-                        totalTimeTaken -=time
-                        updateTime()
-                    }
-                }
+        }
+
+        for (i in viewInitializer.planetAutoCompleteTextViews.indices) {
+            viewInitializer.planetAutoCompleteTextViews[i].setOnItemClickListener { parent, _, position, _ ->
+                // Handle planet selection here.
+                updateAutoCompleteTextViews(i)
                 val selectedItem = parent.getItemAtPosition(position) as String
-                updatePlanetNamesList(selectedItem, 0)
-                updateRadioGroup(radioGroup1, true, 0)
-                updateRadioGroup(radioGroup2, planetIndex = 1)
-                updateRadioGroup(radioGroup3, planetIndex = 2)
-                updateRadioGroup(radioGroup4, planetIndex = 3)
-            }
-    
-            autoCompleteTV2.setOnItemClickListener { parent, view, position, id ->
-                // Handle item click here
-                if (prevSelectedRadioButtonId[1] != 0) {
-                    val oldRadioButton: RadioButton =
-                        requireView().findViewById(prevSelectedRadioButtonId[1])
-                    val idx = radioGroup2.indexOfChild(oldRadioButton)
-                    noOfVehicles[idx]++
-                    unSelectRadioGroup2()
-                    prevSelectedRadioButtonId[1] = 0
-                    val planetDistance: Int? = planetHashMap[prevSelectedPlanetName[1]]
-                    planetDistance?.let {
-                        val i = radioGroup2.indexOfChild(oldRadioButton)
-                        val time = it/vehicleSpeed[i]
-                        totalTimeTaken -=time
-                        updateTime()
-                    }
-                }
-                val selectedItem = parent.getItemAtPosition(position) as String
-                updatePlanetNamesList(selectedItem, 1)
-                updateRadioGroup(radioGroup1, planetIndex = 0)
-                updateRadioGroup(radioGroup2, true, 1)
-                updateRadioGroup(radioGroup3, planetIndex = 2)
-                updateRadioGroup(radioGroup4, planetIndex = 3)
-            }
-    
-            autoCompleteTV3.setOnItemClickListener { parent, view, position, id ->
-                // Handle item click here
-                if (prevSelectedRadioButtonId[2] != 0) {
-                    val oldRadioButton: RadioButton =
-                        requireView().findViewById(prevSelectedRadioButtonId[2])
-                    val idx = radioGroup3.indexOfChild(oldRadioButton)
-                    noOfVehicles[idx]++
-                    unSelectRadioGroup3()
-                    prevSelectedRadioButtonId[2] = 0
-                    val planetDistance: Int? = planetHashMap[prevSelectedPlanetName[2]]
-                    planetDistance?.let {
-                        val i = radioGroup3.indexOfChild(oldRadioButton)
-                        val time = it/vehicleSpeed[i]
-                        totalTimeTaken -=time
-                        updateTime()
-                    }
-                }
-                val selectedItem = parent.getItemAtPosition(position) as String
-                updatePlanetNamesList(selectedItem, 2)
-                updateRadioGroup(radioGroup1, planetIndex = 0)
-                updateRadioGroup(radioGroup2, planetIndex = 1)
-                updateRadioGroup(radioGroup3, true, 2)
-                updateRadioGroup(radioGroup4, planetIndex = 3)
-            }
-    
-            autoCompleteTV4.setOnItemClickListener { parent, view, position, id ->
-                // Handle item click here
-                if (prevSelectedRadioButtonId[3] != 0) {
-                    val oldRadioButton: RadioButton =
-                        requireView().findViewById(prevSelectedRadioButtonId[3])
-                    val idx = radioGroup4.indexOfChild(oldRadioButton)
-                    noOfVehicles[idx]++
-                    unSelectRadioGroup4()
-                    prevSelectedRadioButtonId[3] = 0
-                    val planetDistance: Int? = planetHashMap[prevSelectedPlanetName[3]]
-                    planetDistance?.let {
-                        val i = radioGroup4.indexOfChild(oldRadioButton)
-                        val time = it/vehicleSpeed[i]
-                        totalTimeTaken -=time
-                        updateTime()
-                    }
-                }
-                val selectedItem = parent.getItemAtPosition(position) as String
-                updatePlanetNamesList(selectedItem, 3)
-                updateRadioGroup(radioGroup1, planetIndex = 0)
-                updateRadioGroup(radioGroup2, planetIndex = 1)
-                updateRadioGroup(radioGroup3, planetIndex = 2)
-                updateRadioGroup(radioGroup4, true, 3)
-            }
-    
-            radioGroup1.setOnCheckedChangeListener { group, checkedId ->
-                if (shouldRespondToChange) {
-                    // update properties if user has selected vehicles previously.
-                    val radioButton: RadioButton = group.findViewById(checkedId)
-    
-                    // To again show selection as it hides the selection first time
-                    shouldRespondToChange = false
-                    radioButton.isChecked = true
-                    shouldRespondToChange = true
-    
-                    val i = group.indexOfChild(radioButton)
-                    if (noOfVehicles[i] - 1 >= 0) {
-                        noOfVehicles[i]--
-                    }
-    
-                    if (prevSelectedRadioButtonId[0] != 0) {
-                        val idx = group.indexOfChild(group.findViewById(prevSelectedRadioButtonId[0]))
-                        noOfVehicles[idx]++
-                        val planetDistance: Int? = planetHashMap[prevSelectedPlanetName[0]]
-                        planetDistance?.let {
-                            val time = it/vehicleSpeed[idx]
-                            totalTimeTaken -=time
-                            updateTime()
-                        }
-                    }
-                    prevSelectedRadioButtonId[0] = checkedId
-                    updateRadioGroup(radioGroup1, true, 0)
-                    updateRadioGroup(radioGroup2, planetIndex = 1)
-                    updateRadioGroup(radioGroup3, planetIndex = 2)
-                    updateRadioGroup(radioGroup4, planetIndex = 3)
-                    val planetDistance: Int? = planetHashMap[prevSelectedPlanetName[0]]
-                    planetDistance?.let {
-                        val time = it/vehicleSpeed[i]
-                        totalTimeTaken +=time
-                        updateTime()
-                    }
-                }
-            }
-    
-            radioGroup2.setOnCheckedChangeListener { group, checkedId ->
-                if (shouldRespondToChange) {
-                    val radioButton: RadioButton = group.findViewById(checkedId)
-    
-                    // To again show selection as it hides the selection first time
-                    shouldRespondToChange = false
-                    radioButton.isChecked = true
-                    shouldRespondToChange = true
-    
-                    val i = group.indexOfChild(radioButton)
-                    if (noOfVehicles[i] - 1 >= 0) {
-                        noOfVehicles[i]--
-                    }
-                    if (prevSelectedRadioButtonId[1] != 0) {
-                        val idx = group.indexOfChild(group.findViewById(prevSelectedRadioButtonId[1]))
-                        noOfVehicles[idx]++
-                        val planetDistance: Int? = planetHashMap[prevSelectedPlanetName[1]]
-                        planetDistance?.let {
-                            val time = it/vehicleSpeed[idx]
-                            totalTimeTaken -=time
-                            updateTime()
-                        }
-                    }
-                    prevSelectedRadioButtonId[1] = checkedId
-                    updateRadioGroup(radioGroup1, planetIndex = 0)
-                    updateRadioGroup(radioGroup2, true, 1)
-                    updateRadioGroup(radioGroup3, planetIndex = 2)
-                    updateRadioGroup(radioGroup4, planetIndex = 3)
-    
-                    val planetDistance: Int? = planetHashMap[prevSelectedPlanetName[1]]
-                    planetDistance?.let {
-                        val time = it/vehicleSpeed[i]
-                        totalTimeTaken +=time
-                        updateTime()
-                    }
-                }
-            }
-    
-            radioGroup3.setOnCheckedChangeListener { group, checkedId ->
-                if (shouldRespondToChange) {
-                    val radioButton: RadioButton = group.findViewById(checkedId)
-    
-                    // To again show selection as it hides the selection first time
-                    shouldRespondToChange = false
-                    radioButton.isChecked = true
-                    shouldRespondToChange = true
-    
-                    val i = group.indexOfChild(radioButton)
-                    if (noOfVehicles[i] - 1 >= 0) {
-                        noOfVehicles[i]--
-                    }
-    
-                    if (prevSelectedRadioButtonId[2] != 0) {
-                        val idx = group.indexOfChild(group.findViewById(prevSelectedRadioButtonId[2]))
-                        noOfVehicles[idx]++
-                        val planetDistance: Int? = planetHashMap[prevSelectedPlanetName[2]]
-                        planetDistance?.let {
-                            val time = it/vehicleSpeed[idx]
-                            totalTimeTaken -=time
-                            updateTime()
-                        }
-                    }
-                    prevSelectedRadioButtonId[2] = checkedId
-                    updateRadioGroup(radioGroup1, planetIndex = 0)
-                    updateRadioGroup(radioGroup2, planetIndex = 1)
-                    updateRadioGroup(radioGroup3, true, 2)
-                    updateRadioGroup(radioGroup4, planetIndex = 3)
-    
-                    val planetDistance: Int? = planetHashMap[prevSelectedPlanetName[2]]
-                    planetDistance?.let {
-                        val time = it/vehicleSpeed[i]
-                        totalTimeTaken +=time
-                        updateTime()
-                    }
-                }
-            }
-    
-            radioGroup4.setOnCheckedChangeListener { group, checkedId ->
-                if (shouldRespondToChange) {
-                    val radioButton: RadioButton = group.findViewById(checkedId)
-    
-                    // To again show selection as it hides the selection first time
-                    shouldRespondToChange = false
-                    radioButton.isChecked = true
-                    shouldRespondToChange = true
-    
-                    val i = group.indexOfChild(radioButton)
-                    if (noOfVehicles[i] - 1 >= 0) {
-                        noOfVehicles[i]--
-                    }
-                    if (prevSelectedRadioButtonId[3] != 0) {
-                        val idx = group.indexOfChild(group.findViewById(prevSelectedRadioButtonId[3]))
-                        noOfVehicles[idx]++
-                        val planetDistance: Int? = planetHashMap[prevSelectedPlanetName[3]]
-                        planetDistance?.let {
-                            val time = it/vehicleSpeed[idx]
-                            totalTimeTaken -=time
-                            updateTime()
-                        }
-                    }
-                    prevSelectedRadioButtonId[3] = checkedId
-                    updateRadioGroup(radioGroup1, planetIndex = 0)
-                    updateRadioGroup(radioGroup2, planetIndex = 1)
-                    updateRadioGroup(radioGroup3, planetIndex = 2)
-                    updateRadioGroup(radioGroup4, true, 3)
-                    val planetDistance: Int? = planetHashMap[prevSelectedPlanetName[3]]
-                    planetDistance?.let {
-                        val time = it/vehicleSpeed[i]
-                        totalTimeTaken +=time
-                        updateTime()
-                    }
-                }
+                updatePlanetNamesList(selectedItem, i)
+                updateRadioGroup(i)
             }
         }
-    
-        /** Show [FindFalconResultFragment] screen in which result will be displayed. **/
-        private fun showResultScreen(selectedVehicles: List<String>) {
-            val fragmentManager: FragmentManager = requireActivity().supportFragmentManager
-            val fragment: Fragment? = fragmentManager.findFragmentById(R.id.fragmentContainer)
-    
-            fragment?.let {
-                val newFragment = FindFalconResultFragment.newInstance(totalTimeTaken, prevSelectedPlanetName, selectedVehicles)
-                val fragmentTransaction = fragmentManager.beginTransaction()
-                fragmentTransaction.replace(R.id.fragmentContainer, newFragment).addToBackStack(null)
-                fragmentTransaction.commit()
+
+        for (i in viewInitializer.vehicleRadioGroups.indices) {
+            viewInitializer.vehicleRadioGroups[i].setOnCheckedChangeListener { _, checkedId ->
+                updateRadioGroupOnSelection(i, checkedId)
             }
         }
-    
-        private fun updateTime() {
-            timeTakenTV.text = "Time taken: " + totalTimeTaken
+    }
+
+    /** This method will set [planetNamesList] and [planetHashMap] and update the values in
+     *  [FindFalconFragmentViewInitializer.planetAutoCompleteTextViews] via [updateDestination] method.
+     */
+    private fun setDestination(pList: List<Planets>) {
+        planetNamesList = pList.map { it.name }.toMutableList()
+        val planetDistanceList = planetsList.map { it.distance }
+        for (i in planetNamesList.indices) {
+            planetHashMap[planetNamesList[i]] = planetDistanceList[i]
         }
-    
-        private fun initializeViews(view: View) {
-            constraintLayout = view.findViewById(R.id.constraintLayout)
-            progressBarLayout = view.findViewById(R.id.progress_layout)
-            findFalconButton = view.findViewById(R.id.findFalcon)
-            autoCompleteTV = view.findViewById(R.id.autoCompleteTextView)
-            autoCompleteTV2 = view.findViewById(R.id.autoCompleteTextView2)
-            autoCompleteTV3 = view.findViewById(R.id.autoCompleteTextView3)
-            autoCompleteTV4 = view.findViewById(R.id.autoCompleteTextView4)
-            timeTakenTV = view.findViewById(R.id.timeTaken)
-            radioGroup1 = view.findViewById(R.id.radioGroup1)
-            radioGroup2 = view.findViewById(R.id.radioGroup2)
-            radioGroup3 = view.findViewById(R.id.radioGroup3)
-            radioGroup4 = view.findViewById(R.id.radioGroup4)
-            radioButton1 = view.findViewById(R.id.radioButton1)
-            radioButton2 = view.findViewById(R.id.radioButton2)
-            radioButton3 = view.findViewById(R.id.radioButton3)
-            radioButton4 = view.findViewById(R.id.radioButton4)
-            radioButton5 = view.findViewById(R.id.radioButton5)
-            radioButton6 = view.findViewById(R.id.radioButton6)
-            radioButton7 = view.findViewById(R.id.radioButton7)
-            radioButton8 = view.findViewById(R.id.radioButton8)
-            radioButton9 = view.findViewById(R.id.radioButton9)
-            radioButton10 = view.findViewById(R.id.radioButton10)
-            radioButton11 = view.findViewById(R.id.radioButton11)
-            radioButton12 = view.findViewById(R.id.radioButton12)
-            radioButton13 = view.findViewById(R.id.radioButton13)
-            radioButton14 = view.findViewById(R.id.radioButton14)
-            radioButton15 = view.findViewById(R.id.radioButton15)
-            radioButton16 = view.findViewById(R.id.radioButton16)
+        updateDestination(planetNamesList)
+    }
+
+    /** This method will set vehicles data. */
+    private fun setVehicles(vList: List<Vehicles>) {
+        vehicleNames = vList.map { it.name }
+        vehicleDistances = vList.map { it.max_distance }
+        vehicleSpeeds = vList.map { it.speed }
+        noOfVehicles = vList.map { it.total_no }.toMutableList()
+    }
+
+    /** This method will update the destinations on
+     * [FindFalconFragmentViewInitializer.planetAutoCompleteTextViews] after user has selected
+     *  a destination from drop-down menu or to set its value initially.
+     */
+    private fun updateDestination(pNamesList: List<String>) {
+        val arrayAdapter = ArrayAdapter(requireContext(), R.layout.dropdown_item, pNamesList)
+        // set adapter to the autocomplete tv to the arrayAdapter
+        for (i in viewInitializer.planetAutoCompleteTextViews.indices) {
+            viewInitializer.planetAutoCompleteTextViews[i].setAdapter(arrayAdapter)
         }
-    
-        // It will fetch the planets and vehicles from API.
-        private fun addObservers() {
-            viewModel.myPlanets.observe(viewLifecycleOwner, Observer { response ->
-                if (response != null) {
-                    planetsList = response
-                    setDestination(planetsList)
-                    generateToast("Success Response in fetching Planets")
-                } else {
-                    progressBarLayout.visibility = View.GONE
-                    generateToast("Error in fetching Planets")
-                }
-            })
-    
-            viewModel.myVehicles.observe(viewLifecycleOwner, Observer { response ->
-                if (response != null) {
-                    vehiclesList = response
-                    setVehicles(vehiclesList)
-                    showLayoutAndHideProgressBar()
-                    generateToast("Success Response in fetching Vehicles")
-                } else {
-                    progressBarLayout.visibility = View.GONE
-                    generateToast("Error in fetching Vehicles")
-                }
-            })
+    }
+
+    /** This method will validate the selections whether user has selected 4 planets and 4 vehicles
+     *  to go to those planets.
+     */
+    private fun validateSelections(): Boolean {
+        // Return false if any planet choice is not selected.
+        for (i in prevSelectedPlanetNames.indices) {
+            if (prevSelectedPlanetNames[i].isEmpty()) {
+                generateToast("Please select planet ${i + 1}")
+                return false
+            }
         }
-    
-        // Update Planet names if user selects or changes planet.
-        private fun updatePlanetNamesList(selectedItem: String, pos: Int) {
-            if (prevSelectedPlanetName[pos].isNotEmpty()) {
-                selectedPlanetNames.remove(prevSelectedPlanetName[pos])
-                selectedPlanetNames.add(selectedItem)
-                planetNamesList.remove(selectedItem)
-                planetNamesList.add(prevSelectedPlanetName[pos])
+
+        // Return false if vehicle is not selected for any selected planets.
+        for (i in selectedVehicleRadioIds.indices) {
+            if (selectedVehicleRadioIds[i] == 0) {
+                generateToast("Planet select vehicle to planet ${i + 1}")
+                return false
+            }
+        }
+
+        return true
+    }
+
+    /** This method will return the selected vehicles by the user to go the planets. */
+    private fun getSelectedVehicles(): List<String> {
+        val selectedVehicles = mutableListOf<String>()
+        for (i in selectedVehicleRadioIds.indices) {
+            val index = viewInitializer.vehicleRadioGroups[i].indexOfChild(
+                viewInitializer.vehicleRadioGroups[i].findViewById(selectedVehicleRadioIds[i])
+            )
+            selectedVehicles.add(vehicleNames[index])
+        }
+        return selectedVehicles
+    }
+
+    /** Show [FindFalconResultFragment] screen in which result will be displayed. */
+    private fun showResultScreen(selectedVehicles: List<String>) {
+        val fragmentManager: FragmentManager = requireActivity().supportFragmentManager
+        val fragment: Fragment? = fragmentManager.findFragmentById(R.id.fragmentContainer)
+
+        fragment?.let {
+            val findFalconResultFragment = FindFalconResultFragment.newInstance(
+                totalTimeTaken,
+                prevSelectedPlanetNames,
+                selectedVehicles
+            )
+            val fragmentTransaction = fragmentManager.beginTransaction()
+            fragmentTransaction.replace(R.id.fragmentContainer, findFalconResultFragment)
+                .addToBackStack(null)
+            fragmentTransaction.commit()
+        }
+    }
+
+    /**
+     * This method will be called whenever user selects any vehicle (or radiobutton) from any
+     * [FindFalconFragmentViewInitializer.vehicleRadioGroups] and it will update the [noOfVehicles]
+     * (currently available vehicles), [FindFalconFragmentViewInitializer.timeTakenTV] (total time taken)
+     * and it will also call [updateRadioGroup] method to update the radioButton(s) text.
+     */
+    private fun updateRadioGroupOnSelection(i: Int, checkedId: Int) {
+        if (shouldRespondToChange) {
+            val radioButton: RadioButton = viewInitializer.vehicleRadioGroups[i].findViewById(checkedId)
+
+            // To again show selection as it hides the selection first time
+            shouldRespondToChange = false
+            radioButton.isChecked = true
+            shouldRespondToChange = true
+
+            val index = viewInitializer.vehicleRadioGroups[i].indexOfChild(radioButton)
+            if (noOfVehicles[index] - 1 >= 0) {
+                noOfVehicles[index]--
+            }
+            if (selectedVehicleRadioIds[i] != 0) {
+                val idx = viewInitializer.vehicleRadioGroups[i].indexOfChild(
+                    viewInitializer.vehicleRadioGroups[i].findViewById(selectedVehicleRadioIds[i])
+                )
+                noOfVehicles[idx]++
+                updateTimer(i, idx)
+            }
+            selectedVehicleRadioIds[i] = checkedId
+            updateRadioGroup(i)
+            updateTimer(i, index, false)
+        }
+    }
+
+    /** This method will update [noOfVehicles] if user has previously selected vehicle and call
+     *  the [updateTimer] method to update and show the time.
+     */
+    private fun updateAutoCompleteTextViews(i: Int) {
+        if (selectedVehicleRadioIds[i] != 0) {
+            val oldRadioButton: RadioButton =
+                viewInitializer.vehicleRadioGroups[i].findViewById(selectedVehicleRadioIds[i])
+            val idx = viewInitializer.vehicleRadioGroups[i].indexOfChild(oldRadioButton)
+            noOfVehicles[idx]++
+            unSelectRadioGroup(i)
+            selectedVehicleRadioIds[i] = 0
+            updateTimer(i, idx)
+        }
+    }
+
+    /** This method will update and show the time. */
+    private fun updateTimer(planetIndex: Int, vehicleIndex: Int, decreaseTime: Boolean = true) {
+        val planetDistance: Int? = planetHashMap[prevSelectedPlanetNames[planetIndex]]
+        planetDistance?.let {
+            val time = it / vehicleSpeeds[vehicleIndex]
+            if (decreaseTime) {
+                totalTimeTaken -= time
             } else {
-                planetNamesList.remove(selectedItem)
-                selectedPlanetNames.add(selectedItem)
+                totalTimeTaken += time
             }
-            prevSelectedPlanetName[pos] = selectedItem
-            updateDestination(planetNamesList)
+            updateTime()
         }
-    
-        // Set the RadioButton(s) text for RadioGroup1.
-        private fun updateRadioGroup(radioGroup: RadioGroup, makeVisible: Boolean = false, planetIndex: Int) {
-            radioGroup.children
+    }
+
+    /**
+     * This method will update the text of [FindFalconFragmentViewInitializer.timeTakenTV] and
+     * show the new time to user.
+     */
+    private fun updateTime() {
+        viewInitializer.timeTakenTV.text = "Time taken: " + totalTimeTaken
+    }
+
+    /**
+     * This method will show the layout for user interaction on Success result of vehicles and planets.
+     */
+    private fun showLayoutAndHideProgressBar() {
+        viewInitializer.progressBar.visibility = View.GONE
+        viewInitializer.constraintLayout.visibility = View.VISIBLE
+    }
+
+    /**
+     * This method will update [planetNamesList] and [selectedPlanetNames] if user has previously
+     *  selected planet and update the values in [FindFalconFragmentViewInitializer.planetAutoCompleteTextViews]
+     *  via [updateDestination] method.
+     */
+    private fun updatePlanetNamesList(selectedItem: String, pos: Int) {
+        if (prevSelectedPlanetNames[pos].isNotEmpty()) {
+            selectedPlanetNames.remove(prevSelectedPlanetNames[pos])
+            selectedPlanetNames.add(selectedItem)
+            planetNamesList.remove(selectedItem)
+            planetNamesList.add(prevSelectedPlanetNames[pos])
+        } else {
+            planetNamesList.remove(selectedItem)
+            selectedPlanetNames.add(selectedItem)
+        }
+        prevSelectedPlanetNames[pos] = selectedItem
+        updateDestination(planetNamesList)
+    }
+
+    /**
+     * This method will set the RadioButton(s) text for
+     * [FindFalconFragmentViewInitializer.vehicleRadioGroups] and show appropriate Enable/Disable
+     * status of RadioButton(s) and make RadioGroup visible via the [index] variable.
+     */
+    private fun updateRadioGroup(index: Int) {
+        // To set all the RadioButton(s) text in destinationVehicleRadioGroups.
+        for (i in viewInitializer.vehicleRadioGroups.indices) {
+            viewInitializer.vehicleRadioGroups[i].children
                 .filterIsInstance<RadioButton>()
-                .forEachIndexed { index, radioButton ->
+                .forEachIndexed { idx, radioButton ->
                     radioButton.isEnabled = true
-                    radioButton.text = vehicleNames[index] + " (" + noOfVehicles[index] + ")"
+                    radioButton.text = vehicleNames[idx] + " (" + noOfVehicles[idx] + ")"
                 }
-    
-            if (makeVisible) {
-                radioGroup.visibility = View.VISIBLE
-            }
-    
-            radioGroup.children
+
+            // To update the visibility of destinationVehicleRadioGroups[index] as visible.
+            viewInitializer.vehicleRadioGroups[index].visibility = View.VISIBLE
+
+            // To update the Enable/Disable status of RadioButton(s) as per the given criteria.
+            viewInitializer.vehicleRadioGroups[i].children
                 .filterIsInstance<RadioButton>()
-                .forEachIndexed { index, radioButton ->
-                    if (noOfVehicles[index] == 0) {
+                .forEachIndexed { idx, radioButton ->
+                    if (noOfVehicles[idx] == 0) {
                         radioButton.isEnabled = false
                     }
-                    planetHashMap[prevSelectedPlanetName[planetIndex]]?.let { x ->
-                        if (vehicleDist[index] < x) {
+                    planetHashMap[prevSelectedPlanetNames[i]]?.let { x ->
+                        if (vehicleDistances[idx] < x) {
                             radioButton.isEnabled = false
                         }
                     }
                 }
         }
-    
-        // Remove selection from RadioButtons(s) in RadioGroup1.
-        private fun unSelectRadioGroup1() {
-            shouldRespondToChange = false
-            radioGroup1.children
-                .filterIsInstance<RadioButton>()
-                .forEach { radioButton ->
-                    radioButton.isChecked = false
-                }
-            shouldRespondToChange = true
-        }
-    
-        // Remove selection from RadioButtons(s) in RadioGroup2.
-        private fun unSelectRadioGroup2() {
-            shouldRespondToChange = false
-            radioGroup2.children
-                .filterIsInstance<RadioButton>()
-                .forEach { radioButton ->
-                    radioButton.isChecked = false
-                }
-            shouldRespondToChange = true
-        }
-    
-        // Remove selection from RadioButtons(s) in RadioGroup3.
-        private fun unSelectRadioGroup3() {
-            shouldRespondToChange = false
-            radioGroup3.children
-                .filterIsInstance<RadioButton>()
-                .forEach { radioButton ->
-                    radioButton.isChecked = false
-                }
-            shouldRespondToChange = true
-        }
-    
-        // Remove selection from RadioButtons(s) in RadioGroup1.
-        private fun unSelectRadioGroup4() {
-            shouldRespondToChange = false
-            radioGroup4.children
-                .filterIsInstance<RadioButton>()
-                .forEach { radioButton ->
-                    radioButton.isChecked = false
-                }
-            shouldRespondToChange = true
-        }
-    
-        // storing separate values for vehicles.
-        private fun setVehicles(vList: List<Vehicles>) {
-            vehicleNames = vList.map { it.name }
-            vehicleDist = vList.map { it.max_distance }
-            vehicleSpeed = vList.map { it.speed }
-            noOfVehicles = vList.map { it.total_no }.toMutableList()
-        }
-    
-        private fun setDestination(pList: List<Planets>) {
-            planetNamesList = pList.map { it.name }.toMutableList()
-            val planetDistanceList = planetsList.map { it.distance }
-            for(i in planetNamesList.indices) {
-                planetHashMap[planetNamesList[i]] = planetDistanceList[i]
-            }
-            updateDestination(planetNamesList)
-        }
-    
-        /** It will update the destinations on all AutoCompleteTextViews after user has selected a destination from drop-down menu or to set the AutoCompleteTextViews initially. **/
-        private fun updateDestination(pNamesList: List<String>) {
-            val arrayAdapter = ArrayAdapter(requireContext(), R.layout.dropdown_item, pNamesList)
-            // set adapter to the autocomplete tv to the arrayAdapter
-            autoCompleteTV.setAdapter(arrayAdapter)
-            autoCompleteTV2.setAdapter(arrayAdapter)
-            autoCompleteTV3.setAdapter(arrayAdapter)
-            autoCompleteTV4.setAdapter(arrayAdapter)
-        }
-    
-        // To show the toast.
-        private fun generateToast(msg: String) {
-            Toast.makeText(
-                requireContext(),
-                msg,
-                Toast.LENGTH_SHORT
-            ).show()
-        }
-    
-        // Show the layout for user interaction on Success result of vehicles and planets.
-        private fun showLayoutAndHideProgressBar() {
-            progressBarLayout.visibility = View.GONE
-            constraintLayout.visibility = View.VISIBLE
-        }
-    
-        // To check if the internet connection is active or not.
-        private fun isInternetConnected(context: Context): Boolean {
-            val connectivityManager =
-                context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-            val activeNetwork: NetworkInfo? = connectivityManager.activeNetworkInfo
-            return activeNetwork?.isConnectedOrConnecting == true
-        }
     }
+
+    /**
+     * This method will remove selection from RadioButtons(s) in
+     * [FindFalconFragmentViewInitializer.vehicleRadioGroups] at [index].
+     */
+    private fun unSelectRadioGroup(index: Int) {
+        shouldRespondToChange = false
+        viewInitializer.vehicleRadioGroups[index].children
+            .filterIsInstance<RadioButton>()
+            .forEach { radioButton ->
+                radioButton.isChecked = false
+            }
+        shouldRespondToChange = true
+    }
+
+    /** This method will show the toast. */
+    private fun generateToast(msg: String) {
+        Toast.makeText(
+            requireContext(),
+            msg,
+            Toast.LENGTH_SHORT
+        ).show()
+    }
+}

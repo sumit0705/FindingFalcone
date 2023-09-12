@@ -11,46 +11,51 @@ import com.example.findingfalcone.models.Vehicles
 import com.example.findingfalcone.repo.Repository
 import kotlinx.coroutines.launch
 
+/** Creates a new ViewModel instance. */
 class MainViewModel(private val repo: Repository) : ViewModel() {
 
-    val myPlanets: MutableLiveData<List<Planets>> = MutableLiveData()
-    val myVehicles: MutableLiveData<List<Vehicles>> = MutableLiveData()
-    val myToken: MutableLiveData<Token> = MutableLiveData()
-    val myFalconResult: MutableLiveData<Result> = MutableLiveData()
+    val planetsLiveData: MutableLiveData<List<Planets>> = MutableLiveData()
+    val vehiclesLiveData: MutableLiveData<List<Vehicles>> = MutableLiveData()
+    val tokenLiveData: MutableLiveData<Token> = MutableLiveData()
+    val resultLiveData: MutableLiveData<Result> = MutableLiveData()
 
     init {
         getPlanets()
         getVehicles()
     }
 
+    /** This method will fetch the planets data. */
     fun getPlanets() {
         viewModelScope.launch {
             val response: List<Planets> = repo.getPlanets()
-            myPlanets.value = response
+            planetsLiveData.value = response
         }
     }
 
+    /** This method will fetch the vehicles data. */
     fun getVehicles() {
         viewModelScope.launch {
             val response: List<Vehicles> = repo.getVehicles()
-            myVehicles.value = response
+            vehiclesLiveData.value = response
         }
     }
 
+    /** This method will fetch the token data. */
     fun getToken() {
         viewModelScope.launch {
             val response: Token = repo.getToken()
-            myToken.value = response
+            tokenLiveData.value = response
         }
     }
 
 
+    /** This method will fetch the falcon result data. */
     fun getFalconResult(
         requestBody: RequestBody
     ) {
         viewModelScope.launch {
             val response: Result = repo.getFalconResult(requestBody)
-            myFalconResult.value = response
+            resultLiveData.value = response
         }
     }
 }
